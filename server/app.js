@@ -7,6 +7,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import cors from "cors";
 import "express-async-errors";
+import webpush from "web-push";
 
 import connectdb from "./db/connectdb.js";
 import authRouter from "./routes/auth.js";
@@ -22,6 +23,12 @@ import tokenVerify from "./middleware/auth.js";
 
 dotenv.config();
 
+webpush.setVapidDetails(
+  "mailto:example@gamil.com",
+  process.env.PUBLIC_VAPID_KEY,
+  process.env.PRIVATE_VAPID_KEY
+);
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
@@ -29,16 +36,17 @@ const app = express();
 app.use(express.json());
 app.use(helmet());
 app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
-app.use(morgan("comman"));
+app.use(morgan("common"));
 app.use(bodyParser.json({ limit: "30mb", extended: true }));
 app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
 app.use(cors());
+app.use("/assets", express.static(path.join(__dirname, "public/assets")));
 
 // Routes
 app.use("/auth", authRouter);
 app.use("/user", tokenVerify, userRoutes);
 app.use("/api/tasks", taskRoutes);
-app.use("/subscribe", messageRoutes);
+app.use("/api", messageRoutes);
 
 app.use(errorHandlerMiddleware);
 app.use(notFoundMiddleware);

@@ -26,6 +26,20 @@ const TaskSchema = new mongoose.Schema(
         return new Date(Date.now() + 24 * 60 * 60 * 1000);
       },
     },
+    user: {
+      firstName: {
+        type: String,
+        default: "user firstName",
+      },
+      lastName: {
+        type: String,
+        default: "user lastName",
+      },
+      picturePath: {
+        type: String,
+        default: "",
+      },
+    },
     status: {
       type: String,
       enum: ["in progress", "completed", "expired"],
@@ -49,6 +63,10 @@ const TaskSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
+    },
+    notificationSent: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }

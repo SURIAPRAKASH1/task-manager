@@ -2,14 +2,18 @@ import User from "../models/User.js";
 import { StatusCodes } from "http-status-codes";
 import webpush from "web-push";
 
-export const pushMessage = (req, res) => {
-  const { subscription } = req.body;
+export const pushMessage = async (req, res) => {
+  try {
+    const { subscription } = req.body;
 
-  User.findByIdAndUpdate(req.user._id, {
-    notificationSubscription: subscription,
-  });
+    await User.findByIdAndUpdate(req.user._id, {
+      notificationSubscription: subscription,
+    });
 
-  res.status(StatusCodes.CREATED).json({ message: "Subscription saved !" });
+    res.status(StatusCodes.CREATED).json({ message: "Subscription saved !" });
+  } catch (error) {
+    res.status(404).json(error);
+  }
 };
 
 export const sendNotification = async (subscription, task) => {

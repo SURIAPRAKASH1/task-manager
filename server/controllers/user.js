@@ -81,3 +81,19 @@ export const addRemoveFriend = async (req, res) => {
 
   res.status(StatusCodes.OK).json(formattedFriends);
 };
+
+export const getAllusers = async (req, res) => {
+  try {
+    const users = await User.find({}).select(
+      "-password -email -notificationSubscription"
+    );
+
+    if (!users) {
+      throw new NotFoundError("Got error while finding plateform users!");
+    }
+
+    res.status(StatusCodes.OK).json(users);
+  } catch (error) {
+    res.status(StatusCodes.BAD_REQUEST).json({ msg: error });
+  }
+};

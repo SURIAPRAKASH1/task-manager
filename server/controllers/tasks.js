@@ -26,13 +26,27 @@ export const createTask = async (req, res) => {
     throw new BadRequestError("Provide nessary details to create task");
   }
 
-  const endDateUTC = moment.tz(endTime, "Asia/Kolkata").utc().toDate();
+  console.log("before time:", endTime);
+
+  const endDateUTC = moment.utc(endTime);
+
+  const newTime = endDateUTC.subtract(5, "hours").subtract(30, "minutes");
+  const actualTime = newTime.format();
+  console.log("after time paresed", actualTime);
+
+  const user = req.user;
+  const { firstName, lastName, picturePath } = user;
 
   const task = await Task.create({
     title,
     description,
-    endTime: endDateUTC,
+    endTime: actualTime,
     userId: req.user._id,
+    user: {
+      firstName,
+      lastName,
+      picturePath,
+    },
     approvalRequired,
     approverId: approvalRequired ? approverId : null,
   });
@@ -65,9 +79,28 @@ export const getTasks = async (req, res) => {
     endTime: moment
       .utc(task.endTime)
       .tz("Asia/Kolkata")
-      .format("YYYY-MM-DD HH:mm:ss"),
+      .format("YYYY-MM-DD hh:mm A"),
   }));
 
+  res.status(StatusCodes.OK).json(formattedTasks);
+};
+
+export const getAllTasks = async (req, res) => {
+  const expiredTasks = await Task.find({ status: "expired" }).sort({
+    endTime: -1,
+  });
+
+  if (!expiredTasks) {
+    throw new NotFoundError("No Expired tasks found");
+  }
+
+  const formattedTasks = expiredTasks.map((task) => ({
+    ...task._doc,
+    endTime: moment
+      .utc(task.endTime)
+      .tz("Asia/Kolkata")
+      .format("YYYY-MM-DD hh:mm A"),
+  }));
   res.status(StatusCodes.OK).json(formattedTasks);
 };
 
@@ -132,20 +165,29 @@ export const deleteTask = async (req, res) => {
 cron.schedule("* * * * *", async () => {
   const nowUTC = moment().utc().toDate();
 
+  // console.log("corn running", nowUTC);
+
   const expiredTasks = await Task.updateMany(
-    { endTime: { $lte: nowUTC }, status: "in progress" },
+    {
+      endTime: { $lte: nowUTC },
+      status: "in progress",
+      notificationSent: false,
+    },
     { status: "expired" }
   );
 
-  const task = Task();
+  const tasks = await Task.find({ status: "expired", notificationSent: false });
 
-  if (task.status === "expired") {
-    const user = await User.findById(task.userId);
+  if (tasks) {
+    for (const task of tasks) {
+      const user = await User.findById(task.userId);
 
-    if (user.notificationSubscriptoin) {
-      sendNotification(user.notificationSubscriptoin, task);
+      if (user && user.notificationSubscription) {
+        await sendNotification(user.notificationSubscription, task);
+
+        await Task.findByIdAndUpdate(task._id, { notificationSent: true });
+      }
     }
   }
-
-  console.log(`${expiredTasks.nModified} :${expiredTasks._id} tasks expired `);
+  // console.log(`Now Time : ${nowUTC}`);
 });
